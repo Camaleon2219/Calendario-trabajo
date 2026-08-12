@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+<title>Mi Calendario de Trabajo</title>
+<style>
+  :root{
+    --bg:#FAF6EF;
+    --card:#FFFFFF;
+    --border:#E4DFD3;
+    --teal:#2F6F6B;
+    --teal-dark:#215350;
+    --amber:#E8A23D;
+    --amber-dark:#B87A1F;
+    --text:#262624;
+    --text-soft:#6B6A63;
+    --danger:#B24A3C;
+    --danger-dark:#8A362B;
+    --ok:#4C7A4F;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI", Arial, Helvetica, sans-serif;
+    font-size:19px;
+    line-height:1.4;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:16px;}
+
+  /* Encabezado */
+  .top{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--teal); color:#fff;
+    border-radius:var(--radius);
+    padding:14px 10px;
+    margin-bottom:14px;
+  }
+  .top button{
+    background:rgba(255,255,255,0.15);
+    border:2px solid rgba(255,255,255,0.4);
+    color:#fff;
+    font-size:28px;
+    width:56px; height:56px;
+    border-radius:50%;
+    cursor:pointer;
+  }
+  .top button:active{ background:rgba(255,255,255,0.35); }
+  .top .titulo{
+    text-align:center;
+    flex:1;
+  }
+  .top .mes{ font-size:26px; font-weight:700; text-transform:capitalize; }
+  .top .hoy-btn{
+    width:auto; height:auto; border-radius:14px;
+    padding:8px 14px; font-size:16px; font-weight:700;
+    margin-top:4px;
+  }
+
+  /* Resumen del mes */
+  .resumen{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 18px;
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px;
+    font-size:18px;
+  }
+  .resumen .num{ font-size:30px; font-weight:700; color:var(--teal-dark); }
+
+  /* Calendario */
+  .semana-header, .grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:6px;
+  }
+  .semana-header{
+    margin-bottom:6px;
+  }
+  .semana-header div{
+    text-align:center;
+    font-weight:700;
+    color:var(--text-soft);
+    font-size:15px;
+    padding:4px 0;
+  }
+  .dia{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:14px;
+    min-height:78px;
+    padding:6px 4px;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    text-align:center;
+  }
+  .dia:active{ background:#F1EEE4; }
+  .dia.vacio{ visibility:hidden; cursor:default; }
+  .dia .num-dia{
+    font-size:20px;
+    font-weight:700;
+  }
+  .dia.hoy{
+    border-color:var(--amber);
+    border-width:3px;
+    background:#FFF6E8;
+  }
+  .dia.hoy .num-dia{ color:var(--amber-dark); }
+  .dia .chip-icono{ font-size:22px; line-height:1; }
+  .dia .chip-horas{
+    font-size:14px; font-weight:700;
+    color:#fff; background:var(--teal);
+    border-radius:8px; padding:1px 6px;
+  }
+
+  /* Overlay editor */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(38,38,36,0.55);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:50;
+  }
+  .overlay.abierto{ display:flex; }
+  .panel{
+    background:var(--bg);
+    width:100%;
+    max-width:720px;
+    max-height:92vh;
+    overflow-y:auto;
+    border-radius:24px 24px 0 0;
+    padding:20px 18px 28px;
+  }
+  .panel h2{
+    font-size:26px;
+    margin:0 0 4px;
+    text-transform:capitalize;
+  }
+  .cerrar-x{
+    float:right;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:50%;
+    width:48px; height:48px;
+    font-size:24px;
+    cursor:pointer;
+  }
+  .seccion{ margin-top:22px; }
+  .seccion label{
+    display:block;
+    font-size:19px;
+    font-weight:700;
+    margin-bottom:10px;
+    color:var(--teal-dark);
+  }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:10px; }
+  .chip{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    padding:12px 16px;
+    font-size:18px;
+    cursor:pointer;
+    color:var(--text);
+  }
+  .chip.activo{
+    background:var(--teal);
+    border-color:var(--teal);
+    color:#fff;
+    font-weight:700;
+  }
+  .chip-mas{
+    background:var(--card);
+    border:2px dashed var(--border);
+    color:var(--text-soft);
+  }
+
+  input[type="text"], textarea{
+    width:100%;
+    font-size:19px;
+    font-family:inherit;
+    padding:14px;
+    border-radius:14px;
+    border:2px solid var(--border);
+    background:var(--card);
+    color:var(--text);
+  }
+  textarea{ min-height:90px; resize:vertical; }
+
+  .horas-caja{
+    display:flex; align-items:center; justify-content:center; gap:18px;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    padding:14px;
+  }
+  .horas-caja button{
+    width:60px; height:60px;
+    border-radius:50%;
+    font-size:32px;
+    border:2px solid var(--teal);
+    background:#fff;
+    color:var(--teal);
+    cursor:pointer;
+  }
+  .horas-caja button:active{ background:var(--teal); color:#fff; }
+  .horas-num{
+    font-size:36px;
+    font-weight:700;
+    min-width:110px;
+    text-align:center;
+  }
+  .horas-chips{ justify-content:center; margin-top:10px; }
+
+  .iconos-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(84px, 1fr));
+    gap:10px;
+  }
+  .icono-btn{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    padding:12px 4px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer;
+  }
+  .icono-btn .emoji{ font-size:32px; }
+  .icono-btn .etiqueta{ font-size:13px; color:var(--text-soft); text-align:center; }
+  .icono-btn.activo{
+    background:#FFF6E8;
+    border-color:var(--amber);
+  }
+  .icono-btn.activo .etiqueta{ color:var(--amber-dark); font-weight:700; }
+
+  .botones-finales{
+    margin-top:26px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .btn-grande{
+    width:100%;
+    font-size:22px;
+    font-weight:700;
+    padding:18px;
+    border-radius:16px;
+    border:none;
+    cursor:pointer;
+  }
+  .btn-guardar{ background:var(--teal); color:#fff; }
+  .btn-guardar:active{ background:var(--teal-dark); }
+  .btn-borrar{ background:#fff; color:var(--danger); border:2px solid var(--danger); }
+  .btn-borrar:active{ background:var(--danger); color:#fff; }
+  .btn-cancelar{ background:transparent; color:var(--text-soft); }
+
+  .aviso-guardado{
+    position:fixed;
+    bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--ok); color:#fff;
+    padding:14px 26px;
+    border-radius:16px;
+    font-size:18px; font-weight:700;
+    display:none;
+    z-index:60;
+  }
+  .aviso-guardado.mostrar{ display:block; }
+
+  /* Botón resumen */
+  .btn-resumen{
+    width:100%;
+    background:var(--card);
+    border:2px solid var(--teal);
+    color:var(--teal-dark);
+    font-size:19px;
+    font-weight:700;
+    padding:16px;
+    border-radius:16px;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .btn-resumen:active{ background:#EAF3F2; }
+
+  /* Panel de resumen */
+  .resumen-total-grande{
+    background:var(--teal);
+    color:#fff;
+    border-radius:16px;
+    padding:16px;
+    text-align:center;
+    margin-bottom:18px;
+  }
+  .resumen-total-grande .num{ font-size:34px; font-weight:700; }
+  .resumen-total-grande .etiqueta{ font-size:16px; opacity:0.9; }
+
+  .resumen-sitio{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:14px;
+    padding:12px 16px;
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:10px;
+    font-size:18px;
+  }
+  .resumen-sitio .horas{ font-weight:700; color:var(--teal-dark); font-size:20px; }
+
+  .resumen-dia{
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .resumen-dia .fila-arriba{
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .resumen-dia .fecha{ font-weight:700; font-size:18px; text-transform:capitalize; }
+  .resumen-dia .horas{ font-weight:700; color:var(--teal-dark); font-size:18px; }
+  .resumen-dia .sitio{ color:var(--text-soft); font-size:16px; margin-top:2px; }
+  .resumen-dia .iconos{ font-size:20px; margin-top:6px; }
+  .resumen-dia .nota{ font-size:16px; margin-top:6px; color:var(--text); }
+  .resumen-vacio{
+    text-align:center;
+    color:var(--text-soft);
+    font-size:18px;
+    padding:30px 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <button id="btnAnterior" aria-label="Mes anterior">‹</button>
+    <div class="titulo">
+      <div class="mes" id="tituloMes">Mes</div>
+      <button class="hoy-btn" id="btnHoy">Ir a hoy</button>
+    </div>
+    <button id="btnSiguiente" aria-label="Mes siguiente">›</button>
+  </div>
+
+  <div class="resumen">
+    <div>Horas trabajadas este mes</div>
+    <div class="num" id="totalMes">0 h</div>
+  </div>
+
+  <button class="btn-resumen" id="btnResumen">📋 Ver resumen del mes</button>
+
+  <div class="semana-header">
+    <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="overlay" id="overlayResumen">
+  <div class="panel">
+    <button class="cerrar-x" id="btnCerrarResumen" aria-label="Cerrar">✕</button>
+    <h2 id="resumenTitulo">Resumen del mes</h2>
+
+    <div class="resumen-total-grande">
+      <div class="num" id="resumenTotalHoras">0 h</div>
+      <div class="etiqueta">horas trabajadas en total</div>
+    </div>
+
+    <div class="seccion">
+      <label>Horas por sitio</label>
+      <div id="resumenPorSitio"></div>
+    </div>
+
+    <div class="seccion">
+      <label>Detalle día por día</label>
+      <div id="resumenDias"></div>
+    </div>
+
+    <div class="botones-finales">
+      <button class="btn-grande btn-cancelar" id="btnCerrarResumen2">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <button class="cerrar-x" id="btnCerrar" aria-label="Cerrar">✕</button>
+    <h2 id="fechaTitulo">Fecha</h2>
+
+    <div class="seccion">
+      <label>¿Dónde trabajaste?</label>
+      <div class="chips" id="sitiosChips"></div>
+      <div id="sitioNuevoCaja" style="display:none; margin-top:10px;">
+        <input type="text" id="sitioNuevoInput" placeholder="Escribe el nombre del sitio">
+      </div>
+    </div>
+
+    <div class="seccion">
+      <label>¿Cuántas horas trabajaste?</label>
+      <div class="horas-caja">
+        <button id="horasMenos" aria-label="Menos horas">−</button>
+        <div class="horas-num" id="horasNum">0 h</div>
+        <button id="horasMas" aria-label="Más horas">+</button>
+      </div>
+      <div class="chips horas-chips">
+        <div class="chip" data-h="4">4 h</div>
+        <div class="chip" data-h="6">6 h</div>
+        <div class="chip" data-h="8">8 h</div>
+        <div class="chip" data-h="10">10 h</div>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <label>¿Qué hiciste?</label>
+      <div class="iconos-grid" id="iconosGrid"></div>
+    </div>
+
+    <div class="seccion">
+      <label>Nota (opcional)</label>
+      <textarea id="notaInput" placeholder="Escribe aquí si quieres agregar algo más"></textarea>
+    </div>
+
+    <div class="botones-finales">
+      <button class="btn-grande btn-guardar" id="btnGuardar">Guardar</button>
+      <button class="btn-grande btn-borrar" id="btnBorrar" style="display:none;">Borrar este día</button>
+      <button class="btn-grande btn-cancelar" id="btnCancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="aviso-guardado" id="aviso">Guardado ✓</div>
+
+<script>
+const ICONOS = [
+  {e:"🔨", t:"Trabajo"},
+  {e:"🚗", t:"Viaje"},
+  {e:"🔧", t:"Reparación"},
+  {e:"🧹", t:"Limpieza"},
+  {e:"📦", t:"Entrega"},
+  {e:"📞", t:"Llamada"},
+  {e:"☕", t:"Descanso"},
+  {e:"⚠️", t:"Problema"},
+  {e:"✅", t:"Terminado"},
+  {e:"📝", t:"Otro"},
+];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS_SEMANA = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
+
+let entries = {};
+let sitios = [];
+let vista = new Date();
+vista.setDate(1);
+let fechaSeleccionada = null;
+let horasActuales = 0;
+let iconosActuales = [];
+let sitioActual = "";
+
+function claveFecha(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+async function cargarDatos(){
+  try{
+    const r = await window.storage.get('work-entries', false);
+    entries = r ? JSON.parse(r.value) : {};
+  }catch(e){ entries = {}; }
+  try{
+    const r = await window.storage.get('work-sites', false);
+    sitios = r ? JSON.parse(r.value) : [];
+  }catch(e){ sitios = []; }
+}
+
+async function guardarEntries(){
+  try{ await window.storage.set('work-entries', JSON.stringify(entries), false); }catch(e){}
+}
+async function guardarSitios(){
+  try{ await window.storage.set('work-sites', JSON.stringify(sitios), false); }catch(e){}
+}
+
+function renderCalendario(){
+  document.getElementById("tituloMes").textContent = `${MESES[vista.getMonth()]} ${vista.getFullYear()}`;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  const primerDia = new Date(vista.getFullYear(), vista.getMonth(), 1);
+  let diaSemana = primerDia.getDay();
+  diaSemana = diaSemana === 0 ? 6 : diaSemana - 1;
+
+  const diasEnMes = new Date(vista.getFullYear(), vista.getMonth()+1, 0).getDate();
+  const hoy = new Date();
+  const hoyClave = claveFecha(hoy);
+
+  for(let i=0;i<diaSemana;i++){
+    const vacio = document.createElement("div");
+    vacio.className = "dia vacio";
+    grid.appendChild(vacio);
+  }
+
+  let totalHoras = 0;
+
+  for(let d=1; d<=diasEnMes; d++){
+    const fecha = new Date(vista.getFullYear(), vista.getMonth(), d);
+    const clave = claveFecha(fecha);
+    const entrada = entries[clave];
+
+    const celda = document.createElement("div");
+    celda.className = "dia" + (clave === hoyClave ? " hoy" : "");
+    celda.innerHTML = `<div class="num-dia">${d}</div>`;
+
+    if(entrada){
+      totalHoras += Number(entrada.hours) || 0;
+      if(entrada.icons && entrada.icons.length){
+        celda.innerHTML += `<div class="chip-icono">${entrada.icons[0]}</div>`;
+      }
+      if(entrada.hours){
+        celda.innerHTML += `<div class="chip-horas">${entrada.hours} h</div>`;
+      }
+    }
+
+    celda.addEventListener("click", ()=> abrirEditor(fecha));
+    grid.appendChild(celda);
+  }
+
+  document.getElementById("totalMes").textContent = `${totalHoras} h`;
+}
+
+function renderSitiosChips(){
+  const cont = document.getElementById("sitiosChips");
+  cont.innerHTML = "";
+  sitios.forEach(s=>{
+    const chip = document.createElement("div");
+    chip.className = "chip" + (sitioActual === s ? " activo" : "");
+    chip.textContent = s;
+    chip.addEventListener("click", ()=>{
+      sitioActual = s;
+      document.getElementById("sitioNuevoCaja").style.display = "none";
+      renderSitiosChips();
+    });
+    cont.appendChild(chip);
+  });
+  const mas = document.createElement("div");
+  mas.className = "chip chip-mas";
+  mas.textContent = "+ Nuevo sitio";
+  mas.addEventListener("click", ()=>{
+    document.getElementById("sitioNuevoCaja").style.display = "block";
+    document.getElementById("sitioNuevoInput").focus();
+  });
+  cont.appendChild(mas);
+}
+
+function renderIconos(){
+  const cont = document.getElementById("iconosGrid");
+  cont.innerHTML = "";
+  ICONOS.forEach(ic=>{
+    const btn = document.createElement("div");
+    btn.className = "icono-btn" + (iconosActuales.includes(ic.e) ? " activo" : "");
+    btn.innerHTML = `<div class="emoji">${ic.e}</div><div class="etiqueta">${ic.t}</div>`;
+    btn.addEventListener("click", ()=>{
+      if(iconosActuales.includes(ic.e)){
+        iconosActuales = iconosActuales.filter(x=>x!==ic.e);
+      }else{
+        iconosActuales.push(ic.e);
+      }
+      renderIconos();
+    });
+    cont.appendChild(btn);
+  });
+}
+
+function actualizarHorasNum(){
+  document.getElementById("horasNum").textContent = `${horasActuales} h`;
+}
+
+function abrirEditor(fecha){
+  fechaSeleccionada = fecha;
+  const clave = claveFecha(fecha);
+  const entrada = entries[clave];
+
+  sitioActual = entrada ? entrada.site || "" : "";
+  horasActuales = entrada ? Number(entrada.hours) || 0 : 0;
+  iconosActuales = entrada && entrada.icons ? [...entrada.icons] : [];
+  document.getElementById("notaInput").value = entrada ? entrada.note || "" : "";
+  document.getElementById("sitioNuevoInput").value = "";
+  document.getElementById("sitioNuevoCaja").style.display = "none";
+
+  const nombreDia = DIAS_SEMANA[ (fecha.getDay()===0?6:fecha.getDay()-1) ];
+  document.getElementById("fechaTitulo").textContent = `${nombreDia}, ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
+
+  document.getElementById("btnBorrar").style.display = entrada ? "block" : "none";
+
+  renderSitiosChips();
+  renderIconos();
+  actualizarHorasNum();
+
+  document.getElementById("overlay").classList.add("abierto");
+}
+
+function cerrarEditor(){
+  document.getElementById("overlay").classList.remove("abierto");
+}
+
+async function guardarEntrada(){
+  const clave = claveFecha(fechaSeleccionada);
+  const sitioNuevoTexto = document.getElementById("sitioNuevoInput").value.trim();
+  let sitioFinal = sitioActual;
+  if(sitioNuevoTexto){
+    sitioFinal = sitioNuevoTexto;
+    if(!sitios.includes(sitioNuevoTexto)){
+      sitios.push(sitioNuevoTexto);
+      await guardarSitios();
+    }
+  }
+
+  entries[clave] = {
+    site: sitioFinal,
+    hours: horasActuales,
+    icons: iconosActuales,
+    note: document.getElementById("notaInput").value.trim(),
+  };
+  await guardarEntries();
+  cerrarEditor();
+  renderCalendario();
+  mostrarAviso();
+}
+
+async function borrarEntrada(){
+  const clave = claveFecha(fechaSeleccionada);
+  delete entries[clave];
+  await guardarEntries();
+  cerrarEditor();
+  renderCalendario();
+  mostrarAviso("Borrado ✓");
+}
+
+function mostrarAviso(texto){
+  const aviso = document.getElementById("aviso");
+  aviso.textContent = texto || "Guardado ✓";
+  aviso.classList.add("mostrar");
+  setTimeout(()=> aviso.classList.remove("mostrar"), 1600);
+}
+
+document.getElementById("btnAnterior").addEventListener("click", ()=>{
+  vista.setMonth(vista.getMonth()-1);
+  renderCalendario();
+});
+document.getElementById("btnSiguiente").addEventListener("click", ()=>{
+  vista.setMonth(vista.getMonth()+1);
+  renderCalendario();
+});
+document.getElementById("btnHoy").addEventListener("click", ()=>{
+  vista = new Date();
+  vista.setDate(1);
+  renderCalendario();
+});
+function abrirResumen(){
+  const y = vista.getFullYear(), m = vista.getMonth();
+  document.getElementById("resumenTitulo").textContent = `Resumen de ${MESES[m]} ${y}`;
+
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const filas = [];
+  let totalMes = 0;
+  const porSitio = {};
+
+  for(let d=1; d<=diasEnMes; d++){
+    const fecha = new Date(y, m, d);
+    const clave = claveFecha(fecha);
+    const entrada = entries[clave];
+    if(!entrada) continue;
+    const horas = Number(entrada.hours) || 0;
+    totalMes += horas;
+    const nombreSitio = entrada.site || "Sin sitio";
+    porSitio[nombreSitio] = (porSitio[nombreSitio] || 0) + horas;
+    filas.push({fecha, entrada});
+  }
+
+  document.getElementById("resumenTotalHoras").textContent = `${Math.round(totalMes*10)/10} h`;
+
+  const contSitio = document.getElementById("resumenPorSitio");
+  contSitio.innerHTML = "";
+  const sitiosOrdenados = Object.keys(porSitio).sort((a,b)=> porSitio[b]-porSitio[a]);
+  if(sitiosOrdenados.length === 0){
+    contSitio.innerHTML = `<div class="resumen-vacio">Todavía no hay datos este mes.</div>`;
+  }else{
+    sitiosOrdenados.forEach(s=>{
+      const fila = document.createElement("div");
+      fila.className = "resumen-sitio";
+      fila.innerHTML = `<div>${s}</div><div class="horas">${Math.round(porSitio[s]*10)/10} h</div>`;
+      contSitio.appendChild(fila);
+    });
+  }
+
+  const contDias = document.getElementById("resumenDias");
+  contDias.innerHTML = "";
+  if(filas.length === 0){
+    contDias.innerHTML = `<div class="resumen-vacio">Todavía no anotaste ningún día este mes.</div>`;
+  }else{
+    filas.forEach(({fecha, entrada})=>{
+      const nombreDia = DIAS_SEMANA[ (fecha.getDay()===0?6:fecha.getDay()-1) ];
+      const fila = document.createElement("div");
+      fila.className = "resumen-dia";
+      let html = `<div class="fila-arriba"><div class="fecha">${nombreDia} ${fecha.getDate()}</div><div class="horas">${entrada.hours || 0} h</div></div>`;
+      if(entrada.site){ html += `<div class="sitio">${entrada.site}</div>`; }
+      if(entrada.icons && entrada.icons.length){ html += `<div class="iconos">${entrada.icons.join(" ")}</div>`; }
+      if(entrada.note){ html += `<div class="nota">${entrada.note}</div>`; }
+      fila.innerHTML = html;
+      contDias.appendChild(fila);
+    });
+  }
+
+  document.getElementById("overlayResumen").classList.add("abierto");
+}
+function cerrarResumen(){
+  document.getElementById("overlayResumen").classList.remove("abierto");
+}
+
+document.getElementById("btnResumen").addEventListener("click", abrirResumen);
+document.getElementById("btnCerrarResumen").addEventListener("click", cerrarResumen);
+document.getElementById("btnCerrarResumen2").addEventListener("click", cerrarResumen);
+
+document.getElementById("btnCerrar").addEventListener("click", cerrarEditor);
+document.getElementById("btnCancelar").addEventListener("click", cerrarEditor);
+document.getElementById("btnGuardar").addEventListener("click", guardarEntrada);
+document.getElementById("btnBorrar").addEventListener("click", borrarEntrada);
+
+document.getElementById("horasMas").addEventListener("click", ()=>{
+  horasActuales = Math.round((horasActuales + 0.5)*10)/10;
+  if(horasActuales>24) horasActuales=24;
+  actualizarHorasNum();
+});
+document.getElementById("horasMenos").addEventListener("click", ()=>{
+  horasActuales = Math.round((horasActuales - 0.5)*10)/10;
+  if(horasActuales<0) horasActuales=0;
+  actualizarHorasNum();
+});
+document.querySelectorAll(".horas-chips .chip").forEach(chip=>{
+  chip.addEventListener("click", ()=>{
+    horasActuales = Number(chip.dataset.h);
+    actualizarHorasNum();
+  });
+});
+
+(async function iniciar(){
+  await cargarDatos();
+  renderCalendario();
+})();
+</script>
+</body>
+</html>
